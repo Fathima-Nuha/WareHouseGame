@@ -1,17 +1,20 @@
+/* ── Screen ─────────────────────────────────────────────────────── */
 .screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: 2.5rem 1rem;
-  gap: 1.25rem;
+  padding: 2.5rem 1rem 6rem;
+  gap: 1.5rem;
   font-family: sans-serif;
+  background-color: #1a1a2e;
 }
 
 .title {
   font-size: 2rem;
   color: #e0e0e0;
   letter-spacing: 0.05em;
+  text-align: center;
 }
 
 .subtitle {
@@ -21,6 +24,7 @@
   max-width: 360px;
 }
 
+/* ── Shared section ─────────────────────────────────────────────── */
 .section {
   width: 100%;
   max-width: 420px;
@@ -36,7 +40,7 @@
   padding-bottom: 0.4rem;
 }
 
-/* Character picker */
+/* ── Character picker ───────────────────────────────────────────── */
 .charGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -77,59 +81,129 @@
   color: #a0a0c0;
 }
 
-/* Level list */
-.levelList {
-  list-style: none;
+/* ── Map container ──────────────────────────────────────────────── */
+.mapScroller {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.mapCanvas {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pathSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── Level nodes ────────────────────────────────────────────────── */
+.node {
+  position: absolute;
+  border-radius: 50%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  background-color: #2e2e50;
+  border: 3px solid rgba(100, 100, 170, 0.45);
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.14s, box-shadow 0.14s;
+  user-select: none;
 }
 
-.levelBtn {
-  width: 100%;
+.nodeClickable {
+  cursor: pointer;
+}
+
+.nodeClickable:hover {
+  transform: scale(1.1);
+}
+
+.nodeClickable:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.nodeCompleted {
+  background: linear-gradient(145deg, #1b5c38, #27834f);
+  border-color: rgba(70, 210, 120, 0.5);
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.45), 0 0 14px rgba(60, 180, 100, 0.25);
+}
+
+.nodeActive {
+  background: linear-gradient(145deg, #c06800, #ff8c14);
+  border-color: rgba(255, 210, 80, 0.7);
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.45), 0 0 28px rgba(255, 150, 30, 0.55);
+  animation: activePulse 2.2s ease-in-out infinite;
+}
+
+.nodeLocked {
+  background-color: #191926;
+  border-color: rgba(70, 70, 100, 0.3);
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Node content ───────────────────────────────────────────────── */
+.nodeNum {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #e8e8f0;
+  line-height: 1;
+}
+
+.starBadge {
+  position: absolute;
+  top: -11px;
+  right: -11px;
+  font-size: 1rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+}
+
+.playBadge {
+  position: absolute;
+  bottom: -9px;
+  right: -9px;
+  font-size: 0.55rem;
+  background: #ff8c14;
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  background-color: #1e1e2e;
-  border: 1px solid #3b3b5c;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
-  text-align: left;
+  justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
-.levelBtn:hover {
-  background-color: #2a2a4a;
-  border-color: #5a5a8e;
-}
-
-.levelNumber {
-  font-size: 0.85rem;
-  color: #6060a0;
-  min-width: 24px;
-}
-
-.levelName {
-  flex: 1;
-  font-size: 0.95rem;
-  color: #e0e0e0;
-}
-
-.difficulty {
-  font-size: 0.78rem;
-  color: #7070b0;
-  background-color: #2a2a4a;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.bestBadge {
-  font-size: 0.78rem;
-  color: #ffd700;
-  background-color: #2a2a1a;
-  border: 1px solid #5a5a20;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+.nodeCaption {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  color: rgba(180, 180, 210, 0.72);
   white-space: nowrap;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+/* ── Animations ─────────────────────────────────────────────────── */
+@keyframes activePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 7px 0 rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 150, 30, 0.45);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 7px 0 rgba(0, 0, 0, 0.45), 0 0 40px rgba(255, 150, 30, 0.8);
+  }
 }
