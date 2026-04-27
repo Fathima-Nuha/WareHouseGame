@@ -2,7 +2,7 @@
 
 A Sokoban-style puzzle game built with React + Vite.
 
-**[▶ Play Live](https://warehouse-puzzle-game.netlify.app/)**
+<a href="https://warehouse-puzzle-game.netlify.app/" target="_blank" rel="noopener noreferrer"><strong>▶ Play Live</strong></a>
 
 ## About
 
@@ -31,6 +31,7 @@ Push every crate onto its marked target spot — but think before you push, beca
 cd employee-board-games
 npm install
 npm run dev
+Open [http://localhost:5173](http://localhost:5173).
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+
