@@ -3,6 +3,7 @@ import styles from './LevelSelect.module.css'
 import curatedLevels from '../../levels/curatedLevels'
 import { PLAYER_CHARACTERS, DEFAULT_CHARACTER } from '../../utils/characters'
 import { generateLevel, FIRST_GENERATED_LEVEL, boxCountForLevel } from '../../utils/levelGenerator'
+import { useSounds } from '../../hooks/useSounds'
 
 const DIFFICULTY_LABEL = ['Beginner', 'Easy', 'Medium', 'Hard', 'Expert']
 
@@ -73,6 +74,7 @@ function buildPath(count, W) {
 // ── Component ──────────────────────────────────────────────────────
 function LevelSelect({ onSelectLevel, bestScores = {} }) {
   const [selectedChar, setSelectedChar] = useState(DEFAULT_CHARACTER)
+  const { playCharSelect } = useSounds()
 
   // Build the full ordered level list shown on the map
   const levels = useMemo(() => {
@@ -151,7 +153,7 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
             <button
               key={char.id}
               className={`${styles.charBtn} ${selectedChar.id === char.id ? styles.charBtnSelected : ''}`}
-              onClick={() => setSelectedChar(char)}
+              onClick={() => { setSelectedChar(char); playCharSelect(char.id) }}
               aria-label={`Select ${char.label}`}
               aria-pressed={selectedChar.id === char.id}
             >

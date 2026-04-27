@@ -14,3 +14,44 @@
   color: #e0e0e0;
   letter-spacing: 0.05em;
 }
+
+/* ── In-game hint box ─────────────────────────────────── */
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255, 220, 80, 0.13);
+  border: 1.5px solid rgba(255, 220, 80, 0.45);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  max-width: 380px;
+  width: 100%;
+  font-size: 0.82rem;
+  color: #ffe97a;
+  line-height: 1.4;
+  animation: hintFadeIn 0.4s ease;
+}
+
+.hintIcon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.hintClose {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #ffe97a;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  padding: 0 0.2rem;
+  line-height: 1;
+}
+.hintClose:hover { opacity: 1; }
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
