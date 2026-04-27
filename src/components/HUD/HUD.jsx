@@ -14,7 +14,7 @@ function HUD({ levelName, moves, bestScore, canUndo, onUndo, onReset, onBack }) 
           <span className={styles.best}>
             🏆 Best: {bestScore.moves}
             {bestScore.playerName && (
-              <span className={styles.bestBy}> by {bestScore.playerName}</span>
+              <span className={styles.bestBy}> : {bestScore.playerName}</span>
             )}
           </span>
         )}

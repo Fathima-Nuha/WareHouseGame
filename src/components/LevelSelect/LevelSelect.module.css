@@ -8,7 +8,6 @@
   gap: 1.5rem;
   font-family: sans-serif;
   background-color: #1a1a2e;
-  position: relative;  /* anchor for the fixed player widget */
 }
 
 .title {
@@ -25,56 +24,45 @@
   max-width: 360px;
 }
 
-/* ── Player widget (fixed, top-right) ──────────────────────────────── */
+/* ── Player widget (fixed top-left on desktop) ───────────────── */
 .playerWidget {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  z-index: 50;
-  min-width: 150px;
-}
-
-.playerWidgetToggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background-color: #1e1e38;
-  border: 1.5px solid #3b3b5c;
-  border-radius: 10px;
-  padding: 0.4rem 0.75rem;
-  cursor: pointer;
-  color: #c0c0e0;
-  font-size: 0.82rem;
-  width: 100%;
-  transition: background-color 0.15s, border-color 0.15s;
-  touch-action: manipulation;
-}
-.playerWidgetToggle:hover { background-color: #2a2a50; border-color: #5a5a90; }
-
-.playerWidgetAvatar { font-size: 1rem; }
-.playerWidgetName   { flex: 1; font-weight: 600; text-align: left; }
-.playerWidgetCaret  { font-size: 0.6rem; opacity: 0.6; }
-
-.playerPanel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  width: 220px;
   background-color: #16162a;
   border: 1.5px solid #3b3b5c;
   border-radius: 12px;
   padding: 0.75rem;
-  min-width: 200px;
-  max-width: 240px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   box-shadow: 0 8px 28px rgba(0,0,0,0.55);
-  animation: panelIn 0.15s ease;
+  z-index: 100;
 }
 
-@keyframes panelIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Toggle header — hidden on desktop, shown on mobile */
+.playerWidgetToggle {
+  display: none;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  color: #c0c0e0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  touch-action: manipulation;
+}
+.playerWidgetCaret { font-size: 0.65rem; opacity: 0.6; }
+
+/* Panel body — always visible on desktop */
+.playerPanelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .playerPanelTitle {
@@ -181,9 +169,54 @@
   color: #ff7070;
 }
 
-@media (max-width: 480px) {
-  .playerWidget { top: 0.5rem; right: 0.5rem; }
-  .playerWidgetToggle { font-size: 0.76rem; padding: 0.35rem 0.6rem; }
+/* top padding so page content doesn't hide under the fixed mobile bar */
+@media (max-width: 540px) {
+  .screen { padding-top: 4.5rem; }
+
+  /* Fixed top-right on mobile — always visible */
+  .playerWidget {
+    position: fixed;
+    top: 0.6rem;
+    right: 0.6rem;
+    left: 0.6rem;
+    width: auto;
+    max-width: 100%;
+    padding: 0;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    gap: 0;
+    z-index: 200;
+  }
+
+  /* Show toggle button */
+  .playerWidgetToggle {
+    display: flex;
+    background-color: #16162a;
+    border: 1.5px solid #3b3b5c;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.55);
+  }
+
+  /* Alert tint when no player selected */
+  .playerWidgetNoPlayer {
+    border-color: #a03030 !important;
+    background-color: #2a1616 !important;
+    color: #ff8080 !important;
+  }
+
+  /* Dropdown panel below the toggle */
+  .playerPanelContent {
+    display: none;
+    margin-top: 0.3rem;
+    background-color: #16162a;
+    border: 1.5px solid #3b3b5c;
+    border-radius: 10px;
+    padding: 0.6rem;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.65);
+  }
+  .playerPanelContent.playerPanelOpen { display: flex; }
 }
 
 /* ── Shared section ─────────────────────────────────────────────── */
@@ -197,16 +230,18 @@
   width: 100%;
   padding: 0 9rem;
   box-sizing: border-box;
+  position: relative;
 }
+
+/* Dimmed + blocked state removed — map is always interactive */
 
 @media (max-width: 900px) {
   .mapSection { padding: 0 4rem; }
 }
 @media (max-width: 600px) {
-  .mapSection { padding: 0 1.5rem; }
-}
-@media (max-width: 420px) {
-  .mapSection { padding: 0 0.5rem; }
+  /* Remove side padding — screen already has 1rem on each side;
+     PAD_H inside the canvas provides internal breathing room */
+  .mapSection { padding: 0; }
 }
 
 .sectionTitle {
@@ -271,6 +306,10 @@
   width: 100%;
   transform: rotate(-5deg);
   transform-origin: center center;
+}
+
+@media (max-width: 530px) {
+  .mapCanvas { transform: none; }
 }
 
 .pathSvg {
@@ -338,6 +377,10 @@
   line-height: 1;
 }
 
+@media (max-width: 530px) {
+  .nodeNum { font-size: 1.05rem; }
+}
+
 .starBadge {
   position: absolute;
   top: -11px;
@@ -374,6 +417,28 @@
   white-space: nowrap;
   letter-spacing: 0.02em;
   pointer-events: none;
+}
+
+@media (max-width: 530px) {
+  .nodeCaption { font-size: 0.5rem; top: calc(100% + 4px); }
+}
+
+.nodeBestBy {
+  position: absolute;
+  top: calc(100% + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.56rem;
+  color: rgba(255, 215, 0, 0.6);
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 530px) {
+  .nodeBestBy { display: none; }
 }
 
 /* ── Animations ─────────────────────────────────────────────────── */

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import styles from './LevelSelect.module.css'
 import curatedLevels from '../../levels/curatedLevels'
 import { PLAYER_CHARACTERS, DEFAULT_CHARACTER } from '../../utils/characters'
@@ -7,24 +7,27 @@ import { useSounds } from '../../hooks/useSounds'
 
 const DIFFICULTY_LABEL = ['Beginner', 'Easy', 'Medium', 'Hard', 'Expert']
 
-// ── Map geometry (horizontal snake) ────────────────────────────────
-const NODES_PER_ROW = 5     // nodes per horizontal row
-const PAD_H         = 60    // left / right padding
-const PAD_V         = 80    // top / bottom padding
-const ROW_H         = 155   // vertical distance between row centres
-const WIGGLE        = 18    // vertical arch per row (bigger = more wavy)
-const NORMAL_R      = 32    // regular node radius
-const ACTIVE_R      = 44    // active node radius
+// ── Map geometry breakpoints ────────────────────────────────────────
+// Derived at render time from measured container width (mapW)
+// PAD_H must be >= colW * 0.42 so U-turn bulges never exceed the canvas edge.
+// colW = (W - 2*PAD_H) / (N-1).  Solving PAD_H >= 0.42*colW gives the minimums below.
+// ROW_H must comfortably fit 2*ACTIVE_R plus caption space (~40px).
+function getGeo(w) {
+  if (w < 370) return { NODES_PER_ROW: 3, PAD_H: 44, PAD_V: 58, ROW_H: 118, WIGGLE: 7,  NORMAL_R: 27, ACTIVE_R: 38 }
+  if (w < 540) return { NODES_PER_ROW: 4, PAD_H: 50, PAD_V: 70, ROW_H: 138, WIGGLE: 11, NORMAL_R: 30, ACTIVE_R: 43 }
+  return             { NODES_PER_ROW: 5, PAD_H: 60, PAD_V: 80, ROW_H: 155, WIGGLE: 18, NORMAL_R: 32, ACTIVE_R: 44 }
+}
 
-/** Absolute centre of node i given canvas pixel width W */
-function nodePos(i, W) {
+/** Absolute centre of node i given canvas pixel width W and geometry config */
+function nodePos(i, W, geo) {
+  const { NODES_PER_ROW, PAD_H, PAD_V, ROW_H, WIGGLE } = geo
   const colW       = (W - PAD_H * 2) / (NODES_PER_ROW - 1)
   const row        = Math.floor(i / NODES_PER_ROW)
   const col        = i % NODES_PER_ROW
   const goingRight = row % 2 === 0
   const actualCol  = goingRight ? col : (NODES_PER_ROW - 1 - col)
   const x = PAD_H + actualCol * colW
-  const t = actualCol / (NODES_PER_ROW - 1)             // 0 → 1
+  const t = (NODES_PER_ROW > 1) ? actualCol / (NODES_PER_ROW - 1) : 0.5
   const wiggle = Math.sin(t * Math.PI) * WIGGLE * (goingRight ? -1 : 1)
   const y = PAD_V + row * ROW_H + wiggle
   return { x, y }
@@ -34,9 +37,10 @@ function nodePos(i, W) {
  * Build a smooth continuous SVG path using Catmull-Rom → cubic bézier conversion
  * within each row, and a graceful outward bulge for U-turns between rows.
  */
-function buildPath(count, W) {
+function buildPath(count, W, geo) {
   if (count < 2) return ''
-  const pts  = Array.from({ length: count }, (_, i) => nodePos(i, W))
+  const { NODES_PER_ROW, PAD_H } = geo
+  const pts  = Array.from({ length: count }, (_, i) => nodePos(i, W, geo))
   const colW = (W - PAD_H * 2) / (NODES_PER_ROW - 1)
   let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
 
@@ -61,9 +65,10 @@ function buildPath(count, W) {
       const cp2y = c.y - (next.y - p.y) * T
       d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`
     } else {
-      // ─ U-turn: bezier that bulges outward past the row edge ─
+      // ─ U-turn: bulge clamped to PAD_H so it never escapes the canvas ─
+      // (rightmost node sits at x = W − PAD_H, so PAD_H is the available space)
       const goingRight = pRow % 2 === 0
-      const bulge = colW * 0.42
+      const bulge = Math.min(colW * 0.42, geo.PAD_H * 0.88)
       const bx = goingRight ? p.x + bulge : p.x - bulge
       d += ` C ${bx.toFixed(1)} ${p.y.toFixed(1)} ${bx.toFixed(1)} ${c.y.toFixed(1)} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`
     }
@@ -74,27 +79,11 @@ function buildPath(count, W) {
 // ── Component ──────────────────────────────────────────────────────
 function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, activePlayer, players = [], onSelectPlayer, onAddPlayer, onRemovePlayer }) {
   const [selectedChar, setSelectedChar] = useState(DEFAULT_CHARACTER)
-  const [panelOpen, setPanelOpen]       = useState(false)
   const [newName, setNewName]           = useState('')
   const [nameError, setNameError]       = useState('')
-  const panelRef                        = useRef(null)
+  const [panelOpen, setPanelOpen]       = useState(false)
   const inputRef                        = useRef(null)
   const { playCharSelect } = useSounds()
-
-  // Close panel when clicking outside
-  useEffect(() => {
-    if (!panelOpen) return
-    function handleOutside(e) {
-      if (panelRef.current && !panelRef.current.contains(e.target)) setPanelOpen(false)
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [panelOpen])
-
-  // Focus input when panel opens
-  useEffect(() => {
-    if (panelOpen) setTimeout(() => inputRef.current?.focus(), 50)
-  }, [panelOpen])
 
   function handleAddPlayer(e) {
     e.preventDefault()
@@ -144,7 +133,13 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
     return levels[levels.length - 1]?.id ?? null
   }, [levels, highestPassed])
 
+  const [noPlayerError, setNoPlayerError] = useState(false)
+
   function handlePlay(level) {
+    if (!activePlayer) {
+      setNoPlayerError(true)
+      return
+    }
     if (level.isLocked) return
     let obj = level
     if (level.type === 'generated') {
@@ -158,7 +153,14 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
 
   // Track actual rendered width of the map container
   const mapRef = useRef(null)
-  const [mapW, setMapW] = useState(600)
+  // Seed with viewport width so first render already uses correct geo on mobile
+  const [mapW, setMapW] = useState(() => window.innerWidth)
+  // Immediate sync read after DOM renders (before paint) — eliminates layout flash
+  useLayoutEffect(() => {
+    if (!mapRef.current) return
+    const w = mapRef.current.getBoundingClientRect().width
+    if (w > 0) setMapW(w)
+  }, [])
   useEffect(() => {
     if (!mapRef.current) return
     const ro = new ResizeObserver(([entry]) => setMapW(entry.contentRect.width))
@@ -166,72 +168,77 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
     return () => ro.disconnect()
   }, [])
 
-  const numRows = Math.ceil(displayLevels.length / NODES_PER_ROW)
-  const canvasH = PAD_V * 2 + (numRows - 1) * ROW_H + WIGGLE + ACTIVE_R
-  const pathD   = buildPath(displayLevels.length, mapW)
+  const geo     = useMemo(() => getGeo(mapW), [mapW])
+  const numRows = Math.ceil(displayLevels.length / geo.NODES_PER_ROW)
+  const canvasH = geo.PAD_V * 2 + (numRows - 1) * geo.ROW_H + geo.WIGGLE + geo.ACTIVE_R
+  const pathD   = buildPath(displayLevels.length, mapW, geo)
+  // Scale road stroke widths proportionally to node radius
+  const rScale  = geo.NORMAL_R / 32
 
   return (
     <div className={styles.screen}>
-      {/* ── Player panel (top-right corner) ─────────────────── */}
-      <div className={styles.playerWidget} ref={panelRef}>
+      {/* ── Player panel ─────────────────────────────────── */}
+      <div className={styles.playerWidget}>
+        {/* Mobile-only toggle header */}
         <button
-          className={styles.playerWidgetToggle}
+          className={[
+            styles.playerWidgetToggle,
+            noPlayerError && !activePlayer ? styles.playerWidgetNoPlayer : ''
+          ].join(' ')}
           onClick={() => setPanelOpen((o) => !o)}
           aria-expanded={panelOpen}
-          aria-label="Player panel"
         >
-          <span className={styles.playerWidgetAvatar}>🙂</span>
-          <span className={styles.playerWidgetName}>
-            {activePlayer ? activePlayer.name : 'Select Player'}
-          </span>
+          <span>{activePlayer ? `🙂 ${activePlayer.name}` : noPlayerError ? '⚠️ Select Player' : '👤 Select Player'}</span>
           <span className={styles.playerWidgetCaret}>{panelOpen ? '▲' : '▼'}</span>
         </button>
 
-        {panelOpen && (
-          <div className={styles.playerPanel}>
-            <p className={styles.playerPanelTitle}>Players</p>
+        {/* Content: always visible on desktop, toggle-controlled on mobile */}
+        <div className={[styles.playerPanelContent, panelOpen ? styles.playerPanelOpen : ''].join(' ')}>
+          <p className={styles.playerPanelTitle}>Players</p>
 
-            {players.length === 0 && (
-              <p className={styles.playerPanelEmpty}>No players yet.</p>
-            )}
+          {players.length === 0 && (
+            <p className={styles.playerPanelEmpty}>No players yet.</p>
+          )}
 
-            <ul className={styles.playerPanelList}>
-              {players.map((p) => (
-                <li key={p.id} className={styles.playerPanelItem}>
-                  <button
-                    className={[
-                      styles.playerPanelBtn,
-                      activePlayer?.id === p.id ? styles.playerPanelBtnActive : ''
-                    ].join(' ')}
-                    onClick={() => { onSelectPlayer(p); setPanelOpen(false) }}
-                  >
-                    {activePlayer?.id === p.id ? '✓ ' : ''}{p.name}
-                  </button>
-                  <button
-                    className={styles.playerPanelDel}
-                    onClick={() => onRemovePlayer(p.id)}
-                    aria-label={`Delete ${p.name}`}
-                    title="Delete"
-                  >🗑</button>
-                </li>
-              ))}
-            </ul>
+          <ul className={styles.playerPanelList}>
+            {players.map((p) => (
+              <li key={p.id} className={styles.playerPanelItem}>
+                <button
+                  className={[
+                    styles.playerPanelBtn,
+                    activePlayer?.id === p.id ? styles.playerPanelBtnActive : ''
+                  ].join(' ')}
+                  onClick={() => { onSelectPlayer(p); setNoPlayerError(false); setPanelOpen(false) }}
+                >
+                  {activePlayer?.id === p.id ? '✓ ' : ''}{p.name}
+                </button>
+                <button
+                  className={styles.playerPanelDel}
+                  onClick={() => onRemovePlayer(p.id)}
+                  aria-label={`Delete ${p.name}`}
+                  title="Delete"
+                >🗑</button>
+              </li>
+            ))}
+          </ul>
 
-            <form className={styles.playerPanelForm} onSubmit={handleAddPlayer} noValidate>
-              <input
-                ref={inputRef}
-                className={styles.playerPanelInput}
-                type="text"
-                maxLength={20}
-                placeholder="New player name…"
-                value={newName}
-                onChange={(e) => { setNewName(e.target.value); setNameError('') }}
-              />
-              <button type="submit" className={styles.playerPanelAdd}>Add</button>
-            </form>
-            {nameError && <p className={styles.playerPanelError}>{nameError}</p>}
-          </div>
-        )}
+          <form className={styles.playerPanelForm} onSubmit={handleAddPlayer} noValidate>
+            <input
+              ref={inputRef}
+              className={styles.playerPanelInput}
+              type="text"
+              maxLength={20}
+              placeholder="New player name…"
+              value={newName}
+              onChange={(e) => { setNewName(e.target.value); setNameError('') }}
+            />
+            <button type="submit" className={styles.playerPanelAdd}>Add</button>
+          </form>
+          {noPlayerError && !activePlayer && (
+            <p className={styles.playerPanelError}>⚠️ Select a player to start!</p>
+          )}
+          {nameError && <p className={styles.playerPanelError}>{nameError}</p>}
+        </div>
       </div>
 
       <h1 className={styles.title}>🏭 Warehouse Keeper</h1>
@@ -283,31 +290,31 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
                 </filter>
               </defs>
               {/* Outer soft glow */}
-              <path d={pathD} fill="none" stroke="#4040c0" strokeWidth="56"
+              <path d={pathD} fill="none" stroke="#4040c0" strokeWidth={56 * rScale}
                 strokeLinecap="round" opacity="0.18"
                 style={{ filter: 'blur(10px)' }} />
               {/* Ground shadow — gives road depth */}
-              <path d={pathD} fill="none" stroke="#03030a" strokeWidth="54" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#03030a" strokeWidth={54 * rScale} strokeLinecap="round" />
               {/* Road base */}
-              <path d={pathD} fill="none" stroke="#2d2d78" strokeWidth="44" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#2d2d78" strokeWidth={44 * rScale} strokeLinecap="round" />
               {/* Lighter bevel — makes it look raised */}
-              <path d={pathD} fill="none" stroke="#4848a8" strokeWidth="32" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#4848a8" strokeWidth={32 * rScale} strokeLinecap="round" />
               {/* Inner surface — slightly lighter centre */}
-              <path d={pathD} fill="none" stroke="#3a3a90" strokeWidth="20" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="#3a3a90" strokeWidth={20 * rScale} strokeLinecap="round" />
               {/* Dashed centre line — road marking feel */}
-              <path d={pathD} fill="none" stroke="rgba(255,255,160,0.13)" strokeWidth="2"
-                strokeLinecap="round" strokeDasharray="10 18" />
+              <path d={pathD} fill="none" stroke="rgba(255,255,160,0.13)" strokeWidth={Math.max(1.5, 2 * rScale)}
+                strokeLinecap="round" strokeDasharray={`${8 * rScale} ${14 * rScale}`} />
               {/* Top highlight — thin bright edge */}
-              <path d={pathD} fill="none" stroke="rgba(160,160,255,0.35)" strokeWidth="5" strokeLinecap="round" />
+              <path d={pathD} fill="none" stroke="rgba(160,160,255,0.35)" strokeWidth={Math.max(2, 5 * rScale)} strokeLinecap="round" />
             </svg>
 
             {/* Level nodes */}
             {displayLevels.map((level, i) => {
-              const { x: cx, y: cy } = nodePos(i, mapW)
+              const { x: cx, y: cy } = nodePos(i, mapW, geo)
               const isActive    = level.id === activeLevelId
               const isCompleted = level.id <= highestPassed
               const isLocked    = level.isLocked
-              const r           = isActive ? ACTIVE_R : NORMAL_R
+              const r           = isActive ? geo.ACTIVE_R : geo.NORMAL_R
 
               return (
                 <div
@@ -353,6 +360,11 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
                       ? level.difficulty
                       : ''}
                   </span>
+                  {isCompleted && bestScores[level.id]?.playerName && (
+                    <span className={styles.nodeBestBy}>
+                      {bestScores[level.id].playerName}
+                    </span>
+                  )}
                 </div>
               )
             })}
