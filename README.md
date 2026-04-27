@@ -21,7 +21,7 @@ Push every crate onto its marked target spot — but think before you push, beca
 
 ## Tech Stack
 
-- React 18 + Vite
+- React 18 + Vite...
 - CSS Modules
 - localStorage for persistence (no backend)
 
