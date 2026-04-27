@@ -2,29 +2,35 @@ import { useState } from 'react'
 import styles from './LevelSelect.module.css'
 import curatedLevels from '../../levels/curatedLevels'
 import { PLAYER_CHARACTERS, DEFAULT_CHARACTER } from '../../utils/characters'
-import { generateLevel } from '../../utils/levelGenerator'
+import { generateLevel, FIRST_GENERATED_LEVEL, boxCountForLevel } from '../../utils/levelGenerator'
 
 const DIFFICULTY = ['Beginner', 'Easy', 'Medium', 'Hard', 'Expert']
-const BOX_OPTIONS = [1, 2, 3, 4]
 
 function LevelSelect({ onSelectLevel, bestScores = {} }) {
   const [selectedChar, setSelectedChar] = useState(DEFAULT_CHARACTER)
-  const [boxCount, setBoxCount] = useState(2)
-  const [genError, setGenError] = useState(null)
 
   function handleSelectLevel(level) {
     onSelectLevel(level, selectedChar)
   }
 
-  function handleGenerate() {
+  function handleGeneratedLevel(levelNum) {
     try {
-      setGenError(null)
-      const level = generateLevel(boxCount)
-      onSelectLevel(level, selectedChar)
+      onSelectLevel(generateLevel(levelNum), selectedChar)
     } catch {
-      setGenError('Could not generate a level — try again!')
+      // Extremely unlikely — silently ignore, user can tap again
     }
   }
+
+  // Show from level FIRST_GENERATED_LEVEL up to the first unbeaten + 2 ahead
+  const firstUnbeaten = (() => {
+    let n = FIRST_GENERATED_LEVEL
+    while (bestScores[n] !== undefined) n++
+    return n
+  })()
+  const visibleGenerated = Array.from(
+    { length: firstUnbeaten - FIRST_GENERATED_LEVEL + 3 },
+    (_, i) => FIRST_GENERATED_LEVEL + i
+  )
 
   return (
     <div className={styles.screen}>
@@ -52,31 +58,6 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>♾️ Infinite Random Levels</h2>
-        <p className={styles.randomDesc}>
-          Every generated puzzle is unique. Pick how many crates to juggle.
-        </p>
-        <div className={styles.boxPicker}>
-          {BOX_OPTIONS.map((n) => (
-            <button
-              key={n}
-              className={`${styles.boxBtn} ${boxCount === n ? styles.boxBtnSelected : ''}`}
-              onClick={() => setBoxCount(n)}
-              aria-label={`${n} box${n > 1 ? 'es' : ''}`}
-              aria-pressed={boxCount === n}
-            >
-              {'📦'.repeat(n)}
-              <span className={styles.boxLabel}>{n} crate{n > 1 ? 's' : ''}</span>
-            </button>
-          ))}
-        </div>
-        {genError && <p className={styles.genError}>{genError}</p>}
-        <button className={styles.generateBtn} onClick={handleGenerate}>
-          🎲 Generate &amp; Play
-        </button>
-      </section>
-
-      <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Curated Levels</h2>
         <ul className={styles.levelList}>
           {curatedLevels.map((level, i) => (
@@ -97,6 +78,33 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
               </button>
             </li>
           ))}
+        </ul>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>More Levels</h2>
+        <ul className={styles.levelList}>
+          {visibleGenerated.map((n) => {
+            const boxes = boxCountForLevel(n)
+            return (
+              <li key={n}>
+                <button
+                  className={styles.levelBtn}
+                  onClick={() => handleGeneratedLevel(n)}
+                >
+                  <span className={styles.levelNumber}>#{n}</span>
+                  <span className={styles.levelName}>Level {n}</span>
+                  {bestScores[n] !== undefined ? (
+                    <span className={styles.bestBadge} title="Your best score">
+                      ⭐ {bestScores[n]}
+                    </span>
+                  ) : (
+                    <span className={styles.difficulty}>{boxes} crate{boxes > 1 ? 's' : ''}</span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </section>
     </div>

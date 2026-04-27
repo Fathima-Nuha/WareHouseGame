@@ -15,7 +15,13 @@ The player is a warehouse keeper who pushes crates onto marked floor targets on 
 1. Player cannot move through walls (`#`) or out-of-bounds — always validate before state mutation
 2. All moves must pass `isValidMove()` before being applied
 3. Some moves are irreversible (box into deadlock corner) — undo history stack is always maintained
+4. Make sure each puzzle created is solvable.
 
+## Theme and Visuals
+1. Keep theme of the game consistent with colors and visuals throughout the game.
+2. Give proper UI/UX to the game to make it more engaging and fun to play.
+3. Best practice of UI/UX to be kept.
+4. Make UI responsive and mobile-friendly. 
 ## Cell Encoding (Sokoban standard)
 | Symbol | Meaning |
 |--------|---------|

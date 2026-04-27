@@ -9,7 +9,7 @@ import { useGameEngine } from './hooks/useGameEngine'
 import useKeyboard from './hooks/useKeyboard'
 import { useBestScores } from './hooks/useBestScores'
 import curatedLevels from './levels/curatedLevels'
-import { generateLevel } from './utils/levelGenerator'
+import { generateLevel, FIRST_GENERATED_LEVEL } from './utils/levelGenerator'
 import { DEFAULT_CHARACTER } from './utils/characters'
 
 function App() {
@@ -43,21 +43,29 @@ function App() {
   }
 
   function handleNextLevel() {
-    if (state.currentLevel?.type === 'random') {
-      // Extract the box count from the level name ("Random — N Box(es)")
-      const match = state.currentLevel.name.match(/(\d+) [Bb]ox/)
-      const boxCount = match ? parseInt(match[1], 10) : 2
+    const level = state.currentLevel
+    if (!level) return
+
+    if (level.type === 'generated') {
       try {
-        loadLevel(generateLevel(boxCount))
+        loadLevel(generateLevel(level.id + 1))
       } catch {
-        // Generator exhausted — fall back to level select
         setScreen('levelSelect')
       }
       return
     }
-    const currentIndex = curatedLevels.findIndex((l) => l.id === state.currentLevel?.id)
-    const next = curatedLevels[currentIndex + 1]
-    if (next) loadLevel(next)
+
+    // Curated level: advance to next curated, or begin generated sequence
+    const currentIndex = curatedLevels.findIndex((l) => l.id === level.id)
+    if (currentIndex !== -1 && currentIndex < curatedLevels.length - 1) {
+      loadLevel(curatedLevels[currentIndex + 1])
+    } else {
+      try {
+        loadLevel(generateLevel(FIRST_GENERATED_LEVEL))
+      } catch {
+        setScreen('levelSelect')
+      }
+    }
   }
 
   function handleReplay() {

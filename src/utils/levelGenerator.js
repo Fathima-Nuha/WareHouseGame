@@ -1,21 +1,52 @@
 /**
- * Random 8×8 Sokoban level generator.
+ * Seeded 8×8 Sokoban level generator.
+ *
+ * generateLevel(levelNumber) always produces the same puzzle for a given level
+ * number, so best scores are meaningful across sessions.
  *
  * Strategy:
- *  1. Fill border with walls, carve a random interior maze.
- *  2. Find the largest contiguous floor region via flood-fill.
- *  3. Place targets, boxes, and the player inside that region.
- *  4. Validate that every box can reach at least one target via BFS
- *     (simple reachability — boxes push in one axis at a time).
- *  5. Retry up to MAX_ATTEMPTS times; throw if genuinely impossible.
+ *  1. Seed a deterministic RNG with the level number + attempt index.
+ *  2. Fill border with walls, scatter random interior walls.
+ *  3. Find the largest contiguous floor region via flood-fill.
+ *  4. Place targets, boxes, and the player inside that region.
+ *  5. Reject corner-deadlock boxes and verify BFS reachability.
+ *  6. Retry (different attempt seed) up to MAX_ATTEMPTS times.
  */
 
 const ROWS = 8
 const COLS = 8
-const WALL_CHANCE = 0.28   // ~28 % of interior cells become walls
 const MAX_ATTEMPTS = 200
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+/** Curated levels occupy IDs 1–5; generated levels start here. */
+export const FIRST_GENERATED_LEVEL = 6
+
+// ── Seeded RNG (mulberry32) ───────────────────────────────────────────────────
+
+function makeRng(seed) {
+  let s = seed >>> 0
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0
+    let t = Math.imul(s ^ (s >>> 15), s | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// ── Difficulty scaling ────────────────────────────────────────────────────────
+
+/** Number of boxes/targets for a given level number. */
+export function boxCountForLevel(n) {
+  if (n <= 10) return 2
+  if (n <= 17) return 3
+  return 4
+}
+
+function wallChanceForLevel(n) {
+  // Gently increase wall density as levels progress.
+  return Math.min(0.36, 0.26 + (n - FIRST_GENERATED_LEVEL) * 0.004)
+}
+
+// ── Grid helpers ──────────────────────────────────────────────────────────────
 
 function blankGrid() {
   return Array.from({ length: ROWS }, (_, r) =>
@@ -29,24 +60,23 @@ function gridToStrings(g) {
   return g.map((row) => row.join(''))
 }
 
-/** Fisher-Yates shuffle (in-place). */
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+function shuffleWith(arr, rng) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
   }
-  return arr
+  return a
 }
 
-const DIRS = [[-1,0],[1,0],[0,-1],[0,1]]
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]]
 
-/** Flood-fill from (r,c); returns list of floor cells in that component. */
 function floodFill(grid, startR, startC) {
   const visited = new Set()
-  const queue = [[startR, startC]]
+  const stack = [[startR, startC]]
   const cells = []
-  while (queue.length) {
-    const [r, c] = queue.pop()
+  while (stack.length) {
+    const [r, c] = stack.pop()
     const key = `${r},${c}`
     if (visited.has(key)) continue
     visited.add(key)
@@ -54,13 +84,12 @@ function floodFill(grid, startR, startC) {
     cells.push([r, c])
     for (const [dr, dc] of DIRS) {
       const nr = r + dr, nc = c + dc
-      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) queue.push([nr, nc])
+      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) stack.push([nr, nc])
     }
   }
   return cells
 }
 
-/** Largest connected floor region. */
 function largestFloorRegion(grid) {
   const visited = new Set()
   let best = []
@@ -77,114 +106,118 @@ function largestFloorRegion(grid) {
   return best
 }
 
-/**
- * Simple box-reachability check via BFS of player positions.
- * Returns true if a box at (br,bc) can be pushed onto any target in `targets`.
- * Ignores other boxes (conservative — may pass unsolvable levels occasionally,
- * but never reject a solvable one).
- */
-function boxCanReachATarget(grid, br, bc, targets) {
-  const targetSet = new Set(targets.map(([r, c]) => `${r},${c}`))
-  // BFS over positions the box can occupy when pushed by the player.
-  const visited = new Set([`${br},${bc}`])
-  const queue = [[br, bc]]
-  while (queue.length) {
-    const [r, c] = queue.shift()
-    if (targetSet.has(`${r},${c}`)) return true
-    for (const [dr, dc] of DIRS) {
-      const nr = r + dr, nc = c + dc       // box would move here
-      const pr = r - dr, pc = c - dc       // player must stand here to push
-      if (
-        nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS &&
-        pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS &&
-        grid[nr][nc] !== '#' &&
-        grid[pr][pc] !== '#' &&
-        !visited.has(`${nr},${nc}`)
-      ) {
-        visited.add(`${nr},${nc}`)
-        queue.push([nr, nc])
-      }
-    }
-  }
-  return false
-}
-
-/**
- * Simple deadlock check: a floor cell is a "corner deadlock" if both its
- * horizontal and vertical neighbours are walls. A box placed there with no
- * target can never be moved to a target.
- */
 function isDeadlockCell(grid, r, c) {
-  const blockedV = grid[r-1][c] === '#' || grid[r+1][c] === '#'
-  const blockedH = grid[r][c-1] === '#' || grid[r][c+1] === '#'
+  const blockedV = grid[r - 1][c] === '#' || grid[r + 1][c] === '#'
+  const blockedH = grid[r][c - 1] === '#' || grid[r][c + 1] === '#'
   return blockedV && blockedH
 }
 
-// ── main export ───────────────────────────────────────────────────────────────
+/**
+ * Full BFS Sokoban solver over (playerRow, playerCol, sortedBoxPositions).
+ * Returns true if the puzzle is solvable within the state cap.
+ */
+function isSolvable(grid, player, boxes, targets) {
+  const targetSet = new Set(targets.map(([r, c]) => `${r},${c}`))
 
-let _counter = 0
+  function isWon(bxs) {
+    return bxs.every(([r, c]) => targetSet.has(`${r},${c}`))
+  }
+
+  function encode(pr, pc, bxs) {
+    return `${pr},${pc}|${bxs.map(([r, c]) => `${r},${c}`).sort().join(';')}`
+  }
+
+  const startKey = encode(player[0], player[1], boxes)
+  const visited = new Set([startKey])
+  const queue = [{ pr: player[0], pc: player[1], bxs: boxes }]
+  let steps = 0
+  const STATE_CAP = 250000
+
+  while (queue.length && steps < STATE_CAP) {
+    steps++
+    const { pr, pc, bxs } = queue.shift()
+    const boxSet = new Set(bxs.map(([r, c]) => `${r},${c}`))
+
+    for (const [dr, dc] of DIRS) {
+      const nr = pr + dr, nc = pc + dc
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue
+      if (grid[nr][nc] === '#') continue
+
+      let newBxs = bxs
+      if (boxSet.has(`${nr},${nc}`)) {
+        const br = nr + dr, bc = nc + dc
+        if (br < 0 || br >= ROWS || bc < 0 || bc >= COLS) continue
+        if (grid[br][bc] === '#') continue
+        if (boxSet.has(`${br},${bc}`)) continue
+        newBxs = bxs.map(([r, c]) => (r === nr && c === nc) ? [br, bc] : [r, c])
+      }
+
+      if (isWon(newBxs)) return true
+
+      const key = encode(nr, nc, newBxs)
+      if (!visited.has(key)) {
+        visited.add(key)
+        queue.push({ pr: nr, pc: nc, bxs: newBxs })
+      }
+    }
+  }
+
+  return false
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 
 /**
- * Generate a random 8×8 Sokoban level.
+ * Generate a deterministic 8×8 Sokoban level for a given level number.
+ * The same levelNumber always produces the same puzzle.
  *
- * @param {number} boxCount  Number of boxes/targets (1–4).
- * @returns {{ id: string, name: string, type: 'random', grid: string[] }}
+ * @param {number} levelNumber  Sequential level number (≥ FIRST_GENERATED_LEVEL).
+ * @returns {{ id: number, name: string, type: 'generated', grid: string[] }}
  */
-export function generateLevel(boxCount = 2) {
-  const n = Math.max(1, Math.min(4, boxCount))
+export function generateLevel(levelNumber) {
+  const n = boxCountForLevel(levelNumber)
+  const wallChance = wallChanceForLevel(levelNumber)
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    // 1. Build grid with random interior walls
+    const rng = makeRng(levelNumber * 1000 + attempt)
+
     const grid = blankGrid()
     for (let r = 1; r < ROWS - 1; r++) {
       for (let c = 1; c < COLS - 1; c++) {
-        if (Math.random() < WALL_CHANCE) grid[r][c] = '#'
+        if (rng() < wallChance) grid[r][c] = '#'
       }
     }
 
-    // 2. Find largest floor region
     const region = largestFloorRegion(grid)
-    // Need: n boxes + n targets + 1 player = 2n+1 distinct cells
     if (region.length < 2 * n + 1) continue
 
-    // 3. Shuffle region and pick placements
-    shuffle(region)
+    const shuffled = shuffleWith(region, rng)
+    const targetCells = shuffled.slice(0, n)
+    const boxCells    = shuffled.slice(n, 2 * n)
+    const playerCell  = shuffled[2 * n]
 
-    const targetCells = region.slice(0, n)
-    const boxCells    = region.slice(n, 2 * n)
-    const playerCell  = region[2 * n]
-
-    // 4. Reject boxes sitting on deadlock cells that aren't targets
     const targetSet = new Set(targetCells.map(([r, c]) => `${r},${c}`))
     const hasDeadlockedBox = boxCells.some(([r, c]) => {
-      if (targetSet.has(`${r},${c}`)) return false   // box already on target — fine
+      if (targetSet.has(`${r},${c}`)) return false
       return isDeadlockCell(grid, r, c)
     })
     if (hasDeadlockedBox) continue
 
-    // 5. BFS reachability: each box must reach at least one target
-    const reachable = boxCells.every(([br, bc]) =>
-      boxCanReachATarget(grid, br, bc, targetCells)
-    )
-    if (!reachable) continue
+    // Full BFS solve — only accept provably solvable layouts
+    if (!isSolvable(grid, playerCell, boxCells, targetCells)) continue
 
-    // 6. Assemble final grid strings
-    // Mark targets
     targetCells.forEach(([r, c]) => { grid[r][c] = '.' })
-    // Mark boxes (may land on a target → '*')
     boxCells.forEach(([r, c]) => { grid[r][c] = grid[r][c] === '.' ? '*' : '$' })
-    // Mark player (may land on a target → '+')
     const [pr, pc] = playerCell
     grid[pr][pc] = grid[pr][pc] === '.' ? '+' : '@'
 
-    _counter++
     return {
-      id: `random-${_counter}`,
-      name: `Random — ${n} Box${n > 1 ? 'es' : ''}`,
-      type: 'random',
+      id: levelNumber,
+      name: `Level ${levelNumber}`,
+      type: 'generated',
       grid: gridToStrings(grid),
     }
   }
 
-  throw new Error(`Could not generate a valid level after ${MAX_ATTEMPTS} attempts.`)
+  throw new Error(`Could not generate level ${levelNumber} after ${MAX_ATTEMPTS} attempts.`)
 }
