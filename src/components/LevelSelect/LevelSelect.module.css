@@ -33,7 +33,7 @@
 /* Map section — spans the full available width */
 .mapSection {
   width: 100%;
-  padding: 0 1.5rem;
+  padding: 0 9rem;
   box-sizing: border-box;
 }
 
@@ -97,6 +97,8 @@
 .mapCanvas {
   position: relative;
   width: 100%;
+  transform: rotate(-5deg);
+  transform-origin: center center;
 }
 
 .pathSvg {
