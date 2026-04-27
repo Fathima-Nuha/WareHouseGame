@@ -4,15 +4,15 @@
     '. up .'
     'left . right'
     '. down .';
-  grid-template-columns: 52px 52px 52px;
-  grid-template-rows: 52px 52px 52px;
+  grid-template-columns: repeat(3, clamp(44px, 14vw, 60px));
+  grid-template-rows: repeat(3, clamp(44px, 14vw, 60px));
   gap: 4px;
 }
 
 .btn {
-  width: 52px;
-  height: 52px;
-  font-size: 1.2rem;
+  width: clamp(44px, 14vw, 60px);
+  height: clamp(44px, 14vw, 60px);
+  font-size: clamp(1rem, 4vw, 1.4rem);
   background-color: #2e2e4e;
   color: #e0e0e0;
   border: 2px solid #4a4a6e;

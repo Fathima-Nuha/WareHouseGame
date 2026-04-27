@@ -18,7 +18,10 @@ function WinModal({ moves, bestScore, isNewRecord, currentLevel, onNextLevel, on
 
         {!isNewRecord && bestScore !== undefined && (
           <p className={styles.bestScore}>
-            Best: <strong>{bestScore}</strong> move{bestScore !== 1 ? 's' : ''}
+            Best: <strong>{bestScore.moves}</strong> move{bestScore.moves !== 1 ? 's' : ''}
+            {bestScore.playerName && (
+              <span className={styles.bestBy}> by {bestScore.playerName}</span>
+            )}
           </p>
         )}
 

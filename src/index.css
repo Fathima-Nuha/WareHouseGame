@@ -4,6 +4,11 @@
   padding: 0;
 }
 
+:root {
+  /* Cell size scales down on narrow viewports (8-col board, 2.5rem total side padding) */
+  --cell-size: min(56px, calc((100vw - 2.5rem) / 8));
+}
+
 body {
   background-color: #1a1a2e;
   color: #e0e0e0;

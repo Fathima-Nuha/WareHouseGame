@@ -15,6 +15,27 @@
   letter-spacing: 0.05em;
 }
 
+@media (max-width: 480px) {
+  .app {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  .title {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-height: 680px) {
+  .app {
+    gap: 0.5rem;
+    justify-content: flex-start;
+    padding: 0.5rem 0.75rem;
+  }
+  .title {
+    font-size: 1.1rem;
+  }
+}
+
 /* ── In-game hint box ─────────────────────────────────── */
 .hint {
   display: flex;

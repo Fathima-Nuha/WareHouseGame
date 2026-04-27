@@ -64,6 +64,11 @@
   color: #a0a0d0;
 }
 
+.bestBy {
+  font-size: 0.82rem;
+  color: #7070b0;
+}
+
 .actions {
   display: flex;
   flex-direction: column;

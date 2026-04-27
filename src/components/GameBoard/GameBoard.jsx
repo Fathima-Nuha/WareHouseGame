@@ -7,7 +7,7 @@ function GameBoard({ grid, playerEmoji }) {
   return (
     <div
       className={styles.board}
-      style={{ gridTemplateColumns: `repeat(${grid[0].length}, 56px)` }}
+      style={{ gridTemplateColumns: `repeat(${grid[0].length}, var(--cell-size))` }}
     >
       {grid.map((row, r) =>
         row.split('').map((cellType, c) => (

@@ -72,14 +72,46 @@ function buildPath(count, W) {
 }
 
 // ── Component ──────────────────────────────────────────────────────
-function LevelSelect({ onSelectLevel, bestScores = {} }) {
+function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, activePlayer, players = [], onSelectPlayer, onAddPlayer, onRemovePlayer }) {
   const [selectedChar, setSelectedChar] = useState(DEFAULT_CHARACTER)
+  const [panelOpen, setPanelOpen]       = useState(false)
+  const [newName, setNewName]           = useState('')
+  const [nameError, setNameError]       = useState('')
+  const panelRef                        = useRef(null)
+  const inputRef                        = useRef(null)
   const { playCharSelect } = useSounds()
+
+  // Close panel when clicking outside
+  useEffect(() => {
+    if (!panelOpen) return
+    function handleOutside(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) setPanelOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [panelOpen])
+
+  // Focus input when panel opens
+  useEffect(() => {
+    if (panelOpen) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [panelOpen])
+
+  function handleAddPlayer(e) {
+    e.preventDefault()
+    const trimmed = newName.trim()
+    if (!trimmed) { setNameError('Enter a name.'); return }
+    if (players.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      setNameError('Name already taken.'); return
+    }
+    onAddPlayer(trimmed)
+    setNewName('')
+    setNameError('')
+  }
 
   // Build the full ordered level list shown on the map
   const levels = useMemo(() => {
     let firstUnbeaten = FIRST_GENERATED_LEVEL
-    while (bestScores[firstUnbeaten] !== undefined) firstUnbeaten++
+    while (firstUnbeaten <= highestPassed) firstUnbeaten++
     const genCount = firstUnbeaten - FIRST_GENERATED_LEVEL + 3
 
     const generated = Array.from({ length: genCount }, (_, i) => {
@@ -90,7 +122,7 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
         name: `Level ${n}`,
         type: 'generated',
         difficulty: `${boxes} crate${boxes > 1 ? 's' : ''}`,
-        isLocked: n > FIRST_GENERATED_LEVEL && bestScores[n - 1] === undefined,
+        isLocked: n > FIRST_GENERATED_LEVEL && n - 1 > highestPassed,
       }
     })
 
@@ -102,15 +134,15 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
       })),
       ...generated,
     ]
-  }, [bestScores])
+  }, [highestPassed])
 
   // First uncompleted unlocked level = the "active" node
   const activeLevelId = useMemo(() => {
     for (const l of levels) {
-      if (!l.isLocked && bestScores[l.id] === undefined) return l.id
+      if (!l.isLocked && l.id > highestPassed) return l.id
     }
     return levels[levels.length - 1]?.id ?? null
-  }, [levels, bestScores])
+  }, [levels, highestPassed])
 
   function handlePlay(level) {
     if (level.isLocked) return
@@ -140,6 +172,68 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
 
   return (
     <div className={styles.screen}>
+      {/* ── Player panel (top-right corner) ─────────────────── */}
+      <div className={styles.playerWidget} ref={panelRef}>
+        <button
+          className={styles.playerWidgetToggle}
+          onClick={() => setPanelOpen((o) => !o)}
+          aria-expanded={panelOpen}
+          aria-label="Player panel"
+        >
+          <span className={styles.playerWidgetAvatar}>🙂</span>
+          <span className={styles.playerWidgetName}>
+            {activePlayer ? activePlayer.name : 'Select Player'}
+          </span>
+          <span className={styles.playerWidgetCaret}>{panelOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {panelOpen && (
+          <div className={styles.playerPanel}>
+            <p className={styles.playerPanelTitle}>Players</p>
+
+            {players.length === 0 && (
+              <p className={styles.playerPanelEmpty}>No players yet.</p>
+            )}
+
+            <ul className={styles.playerPanelList}>
+              {players.map((p) => (
+                <li key={p.id} className={styles.playerPanelItem}>
+                  <button
+                    className={[
+                      styles.playerPanelBtn,
+                      activePlayer?.id === p.id ? styles.playerPanelBtnActive : ''
+                    ].join(' ')}
+                    onClick={() => { onSelectPlayer(p); setPanelOpen(false) }}
+                  >
+                    {activePlayer?.id === p.id ? '✓ ' : ''}{p.name}
+                  </button>
+                  <button
+                    className={styles.playerPanelDel}
+                    onClick={() => onRemovePlayer(p.id)}
+                    aria-label={`Delete ${p.name}`}
+                    title="Delete"
+                  >🗑</button>
+                </li>
+              ))}
+            </ul>
+
+            <form className={styles.playerPanelForm} onSubmit={handleAddPlayer} noValidate>
+              <input
+                ref={inputRef}
+                className={styles.playerPanelInput}
+                type="text"
+                maxLength={20}
+                placeholder="New player name…"
+                value={newName}
+                onChange={(e) => { setNewName(e.target.value); setNameError('') }}
+              />
+              <button type="submit" className={styles.playerPanelAdd}>Add</button>
+            </form>
+            {nameError && <p className={styles.playerPanelError}>{nameError}</p>}
+          </div>
+        )}
+      </div>
+
       <h1 className={styles.title}>🏭 Warehouse Keeper</h1>
       <p className={styles.subtitle}>
         Shove every crate onto its marked spot — but think before you push!
@@ -211,7 +305,7 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
             {displayLevels.map((level, i) => {
               const { x: cx, y: cy } = nodePos(i, mapW)
               const isActive    = level.id === activeLevelId
-              const isCompleted = bestScores[level.id] !== undefined
+              const isCompleted = level.id <= highestPassed
               const isLocked    = level.isLocked
               const r           = isActive ? ACTIVE_R : NORMAL_R
 
@@ -233,7 +327,9 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
                     isLocked
                       ? `Level ${level.id} — locked`
                       : isCompleted
-                      ? `Level ${level.id} — best ${bestScores[level.id]} moves`
+                      ? `Level ${level.id} — best ${bestScores[level.id]?.moves ?? '?'} moves${
+                          bestScores[level.id]?.playerName ? ` by ${bestScores[level.id].playerName}` : ''
+                        }`
                       : `Level ${level.id} — ${level.difficulty}`
                   }
                   onClick={() => handlePlay(level)}
@@ -252,7 +348,7 @@ function LevelSelect({ onSelectLevel, bestScores = {} }) {
 
                   <span className={styles.nodeCaption}>
                     {isCompleted
-                      ? `★ ${bestScores[level.id]}`
+                      ? `★ ${bestScores[level.id]?.moves ?? '✓'}`
                       : !isLocked
                       ? level.difficulty
                       : ''}
