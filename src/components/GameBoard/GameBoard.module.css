@@ -1,0 +1,7 @@
+.board {
+  display: grid;
+  gap: 0;
+  border: 2px solid #3b3b5c;
+  width: fit-content;
+  margin: 0 auto;
+}

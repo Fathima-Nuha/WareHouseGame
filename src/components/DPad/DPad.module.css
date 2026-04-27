@@ -1,0 +1,31 @@
+.dpad {
+  display: grid;
+  grid-template-areas:
+    '. up .'
+    'left . right'
+    '. down .';
+  grid-template-columns: 52px 52px 52px;
+  grid-template-rows: 52px 52px 52px;
+  gap: 4px;
+}
+
+.btn {
+  width: 52px;
+  height: 52px;
+  font-size: 1.2rem;
+  background-color: #2e2e4e;
+  color: #e0e0e0;
+  border: 2px solid #4a4a6e;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s, transform 0.1s;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  background-color: #4a4a7e;
+  transform: scale(0.93);
+}

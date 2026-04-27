@@ -1,0 +1,39 @@
+.cell {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  border: 1px solid #2a2a3e;
+  user-select: none;
+}
+
+.wall {
+  background-color: #3b3b5c;
+}
+
+.floor {
+  background-color: #1e1e2e;
+}
+
+.target {
+  background-color: #1e1e2e;
+}
+
+.box {
+  background-color: #1e1e2e;
+  cursor: default;
+}
+
+.boxOnTarget {
+  background-color: #1e1e2e;
+}
+
+.player {
+  background-color: #1e1e2e;
+}
+
+.playerOnTarget {
+  background-color: #1e1e2e;
+}

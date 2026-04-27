@@ -1,0 +1,109 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal {
+  background-color: #1a1a2e;
+  border: 2px solid #4a4a7e;
+  border-radius: 14px;
+  padding: 2rem 2.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 340px;
+  width: 90%;
+  animation: pop 0.25s ease;
+}
+
+.trophy {
+  font-size: 3rem;
+}
+
+.heading {
+  font-size: 1.6rem;
+  color: #e0e0e0;
+}
+
+.levelName {
+  font-size: 0.9rem;
+  color: #8080a0;
+}
+
+.moves {
+  font-size: 1.1rem;
+  color: #c0c0e0;
+}
+
+.moves strong {
+  color: #7fff7f;
+}
+
+.newRecord {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 0.04em;
+  animation: pop 0.3s ease;
+}
+
+.bestScore {
+  font-size: 0.9rem;
+  color: #8080a0;
+}
+
+.bestScore strong {
+  color: #a0a0d0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background-color: #2e2e4e;
+  color: #e0e0e0;
+  border: 1px solid #4a4a6e;
+  transition: background-color 0.15s;
+}
+
+.btn:hover {
+  background-color: #3e3e6e;
+}
+
+.primary {
+  background-color: #3a3a7e;
+  border-color: #6060b0;
+  font-weight: 600;
+}
+
+.primary:hover {
+  background-color: #4a4a9e;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}

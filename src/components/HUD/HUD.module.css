@@ -1,0 +1,57 @@
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  padding: 0.5rem 0.75rem;
+  background-color: #16162a;
+  border: 1px solid #3b3b5c;
+  border-radius: 8px;
+  gap: 0.5rem;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.levelName {
+  font-size: 0.85rem;
+  color: #a0a0c0;
+  text-align: center;
+}
+
+.moves {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn {
+  background-color: #2e2e4e;
+  color: #e0e0e0;
+  border: 1px solid #4a4a6e;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background-color: #3e3e6e;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
