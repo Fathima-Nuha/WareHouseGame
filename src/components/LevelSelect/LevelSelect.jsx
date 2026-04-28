@@ -135,6 +135,7 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
 
   const [noPlayerError, setNoPlayerError] = useState(false)
   const [genError, setGenError]           = useState(false)
+  const [generating, setGenerating]       = useState(false)
 
   function handlePlay(level) {
     if (!activePlayer) {
@@ -142,18 +143,24 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
       return
     }
     if (level.isLocked) return
-    let obj = level
-    if (level.type === 'generated') {
+    if (level.type !== 'generated') {
+      onSelectLevel(level, selectedChar)
+      return
+    }
+    // Show loading overlay, then run the CPU-heavy generator after paint
+    setGenerating(true)
+    setTimeout(() => {
       try {
-        obj = generateLevelOrNearest(level.id)
+        const obj = generateLevelOrNearest(level.id)
+        setGenError(false)
+        setGenerating(false)
+        onSelectLevel(obj, selectedChar)
       } catch {
+        setGenerating(false)
         setGenError(true)
         setTimeout(() => setGenError(false), 3000)
-        return
       }
-    }
-    setGenError(false)
-    onSelectLevel(obj, selectedChar)
+    }, 0)
   }
 
   // Render highest level at top, Level 1 at bottom
@@ -185,6 +192,15 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
 
   return (
     <div className={styles.screen}>
+      {generating && (
+        <div className={styles.genOverlay}>
+          <div className={styles.genCard}>
+            <div className={styles.genSpinner} />
+            <p className={styles.genMsg}>🏗️ Building your level…</p>
+            <p className={styles.genSubMsg}>Hang tight, this takes a moment!</p>
+          </div>
+        </div>
+      )}
       {/* ── Player panel ─────────────────────────────────── */}
       <div className={styles.playerWidget}>
         {/* Mobile-only toggle header */}

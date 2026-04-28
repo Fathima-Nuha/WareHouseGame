@@ -27,6 +27,7 @@ function App() {
   // updates immediately when updateProgress is called.
   const highestPassed = players.find((p) => p.id === activePlayer?.id)?.lastPassedLevel ?? 0
   const [isNewRecord, setIsNewRecord] = useState(false)
+  const [generating, setGenerating]   = useState(false)
 
   // No longer needed — player add/select happens inline in LevelSelect
   // pendingPlayerName kept only for auto-select after addPlayer async state
@@ -92,11 +93,15 @@ function App() {
     if (!level) return
 
     if (level.type === 'generated') {
-      try {
-        loadLevel(generateLevelOrNearest(level.id + 1))
-      } catch {
-        setScreen('levelSelect')
-      }
+      setGenerating(true)
+      setTimeout(() => {
+        try {
+          loadLevel(generateLevelOrNearest(level.id + 1))
+        } catch {
+          setScreen('levelSelect')
+        }
+        setGenerating(false)
+      }, 0)
       return
     }
 
@@ -105,11 +110,15 @@ function App() {
     if (currentIndex !== -1 && currentIndex < curatedLevels.length - 1) {
       loadLevel(curatedLevels[currentIndex + 1])
     } else {
-      try {
-        loadLevel(generateLevelOrNearest(FIRST_GENERATED_LEVEL))
-      } catch {
-        setScreen('levelSelect')
-      }
+      setGenerating(true)
+      setTimeout(() => {
+        try {
+          loadLevel(generateLevelOrNearest(FIRST_GENERATED_LEVEL))
+        } catch {
+          setScreen('levelSelect')
+        }
+        setGenerating(false)
+      }, 0)
     }
   }
 
@@ -172,6 +181,15 @@ function App() {
 
   return (
     <div className={styles.app}>
+      {generating && (
+        <div className={styles.genOverlay}>
+          <div className={styles.genCard}>
+            <div className={styles.genSpinner} />
+            <p className={styles.genMsg}>🏗️ Preparing your next level…</p>
+            <p className={styles.genSubMsg}>Hang tight, this takes a moment!</p>
+          </div>
+        </div>
+      )}
       <h1 className={styles.title}>🏭 Warehouse Keeper</h1>
 
       <HUD
