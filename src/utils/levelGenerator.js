@@ -15,7 +15,7 @@
 
 const ROWS = 8
 const COLS = 8
-const MAX_ATTEMPTS = 200
+const MAX_ATTEMPTS = 600
 
 /** Curated levels occupy IDs 1–5; generated levels start here. */
 export const FIRST_GENERATED_LEVEL = 6
@@ -220,4 +220,21 @@ export function generateLevel(levelNumber) {
   }
 
   throw new Error(`Could not generate level ${levelNumber} after ${MAX_ATTEMPTS} attempts.`)
+}
+
+/**
+ * Like generateLevel but never throws — if the exact level number fails,
+ * tries nearby numbers (levelNumber+1, +2 …) up to 10 steps ahead.
+ * Returns { level, actualId } so callers can know what was actually loaded.
+ */
+export function generateLevelOrNearest(levelNumber) {
+  for (let offset = 0; offset <= 10; offset++) {
+    try {
+      const level = generateLevel(levelNumber + offset)
+      return level
+    } catch {
+      // try next
+    }
+  }
+  throw new Error(`Could not generate any level near ${levelNumber}`)
 }

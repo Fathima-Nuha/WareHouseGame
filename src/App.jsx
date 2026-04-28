@@ -12,7 +12,7 @@ import { useBestScores } from './hooks/useBestScores'
 import { usePlayers } from './hooks/usePlayers'
 import { useSounds } from './hooks/useSounds'
 import curatedLevels from './levels/curatedLevels'
-import { generateLevel, FIRST_GENERATED_LEVEL } from './utils/levelGenerator'
+import { generateLevel, generateLevelOrNearest, FIRST_GENERATED_LEVEL } from './utils/levelGenerator'
 import { DEFAULT_CHARACTER } from './utils/characters'
 import { movePlayer, isWon, CELL } from './utils/sokoban'
 
@@ -93,7 +93,7 @@ function App() {
 
     if (level.type === 'generated') {
       try {
-        loadLevel(generateLevel(level.id + 1))
+        loadLevel(generateLevelOrNearest(level.id + 1))
       } catch {
         setScreen('levelSelect')
       }
@@ -106,7 +106,7 @@ function App() {
       loadLevel(curatedLevels[currentIndex + 1])
     } else {
       try {
-        loadLevel(generateLevel(FIRST_GENERATED_LEVEL))
+        loadLevel(generateLevelOrNearest(FIRST_GENERATED_LEVEL))
       } catch {
         setScreen('levelSelect')
       }

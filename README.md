@@ -18,12 +18,14 @@ Push every crate onto its marked target spot — but think before you push, beca
 - Background music & sound effects
 - Mobile-responsive road map with adaptive layout
 - Character selection
+- **PWA** — installable on Android & iOS (works offline, home screen shortcut)
 
 ## Tech Stack
 
-- React 18 + Vite...
+- React 18 + Vite
 - CSS Modules
 - localStorage for persistence (no backend)
+- `vite-plugin-pwa` — service worker + web manifest for installability
 
 ## Running Locally
 
@@ -31,7 +33,11 @@ Push every crate onto its marked target spot — but think before you push, beca
 cd employee-board-games
 npm install
 npm run dev
-Open [http://localhost:5173](http://localhost:5173).
 ```
 
+Open [http://localhost:5173](http://localhost:5173).
+
+## Install as Mobile App
+
+Visit the live URL on your phone browser, tap **Share → Add to Home Screen** (iOS) or **Install App** (Android Chrome). It runs fullscreen like a native app and works offline.
 

@@ -31,3 +31,8 @@ Shift ends when all boxes are on their spots. Think before you push — wrong mo
 - Win modal appears when level is complete
 - Shows move count
 - Options: next level, replay, go to level select
+
+## Distribution
+- Deployed on Netlify
+- PWA-enabled: installable on Android & iOS via browser "Add to Home Screen"
+- Service worker caches assets for offline play

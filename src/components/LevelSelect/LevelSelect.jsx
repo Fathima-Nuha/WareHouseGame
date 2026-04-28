@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import styles from './LevelSelect.module.css'
 import curatedLevels from '../../levels/curatedLevels'
 import { PLAYER_CHARACTERS, DEFAULT_CHARACTER } from '../../utils/characters'
-import { generateLevel, FIRST_GENERATED_LEVEL, boxCountForLevel } from '../../utils/levelGenerator'
+import { generateLevelOrNearest, FIRST_GENERATED_LEVEL, boxCountForLevel } from '../../utils/levelGenerator'
 import { useSounds } from '../../hooks/useSounds'
 
 const DIFFICULTY_LABEL = ['Beginner', 'Easy', 'Medium', 'Hard', 'Expert']
@@ -134,6 +134,7 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
   }, [levels, highestPassed])
 
   const [noPlayerError, setNoPlayerError] = useState(false)
+  const [genError, setGenError]           = useState(false)
 
   function handlePlay(level) {
     if (!activePlayer) {
@@ -143,8 +144,15 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
     if (level.isLocked) return
     let obj = level
     if (level.type === 'generated') {
-      try { obj = generateLevel(level.id) } catch { return }
+      try {
+        obj = generateLevelOrNearest(level.id)
+      } catch {
+        setGenError(true)
+        setTimeout(() => setGenError(false), 3000)
+        return
+      }
     }
+    setGenError(false)
     onSelectLevel(obj, selectedChar)
   }
 
@@ -245,6 +253,9 @@ function LevelSelect({ onSelectLevel, highestPassed = 0, bestScores = {}, active
       <p className={styles.subtitle}>
         Shove every crate onto its marked spot — but think before you push!
       </p>
+      {genError && (
+        <p className={styles.genError}>⚠️ Couldn't generate that level — try again or pick another.</p>
+      )}
 
       {/* ── Character picker ──────────────────────────────────── */}
       <section className={styles.section}>
